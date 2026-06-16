@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+#
+# gofax — GoFaxYourself runner.
+# A tiny SIP honeypot that answers spam calls so you don't have to.
+#
+# Builds a local baresip Docker image, registers to your SIP provider with
+# --net=host, auto-answers incoming calls, and plays a pre-recorded WAV.
+#
+set -euo pipefail
+
+readonly DOCKER_IMAGE="gofaxyourself:local"
+readonly CONTAINER_AUDIO_PATH="/audio/payload.wav"
+
+readonly DEFAULT_GOFAX_MODE="tape"
+readonly DEFAULT_GOFAX_LANGUAGE="en"
+readonly DEFAULT_GOFAX_PERSONA="confused-grandpa"
+readonly DEFAULT_AUDIO_FILE="./audio/en/confused-grandpa.wav"
+readonly DEFAULT_CALL_INTERVAL_SECONDS="5"
+readonly DEFAULT_CALL_DURATION_SECONDS="0"
+readonly DEFAULT_AUDIO_FILE_SAMPLE_RATE="8000"
+readonly DEFAULT_SIP_PORT="5060"
+
+banner() {
+  cat <<'EOF'
+  +-------------------------------------------+
+  |   ___      ___          GoFaxYourself     |
+  |  / __|___ | __|_ ___ __  __               |
+  | | (_ / _ \| _/ _` \ \/ / |_ |  [.....]    |
+  |  \___\___/|_|\__,_/_/\_\__/    | fax |     |
+  |                               =========    |
+  +-------------------------------------------+
+   A tiny SIP honeypot that answers spam calls
+                so you don't have to.
+EOF
+}
+
+load_env_file() {
+  if [[ -f ".env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source ".env"
+    set +a
+  fi
+}
+
+require_command() {
+  local command_name="$1"
+  if ! command -v "${command_name}" >/dev/null 2>&1; then
+    printf 'Error: required command not found: %s\n' "${command_name}" >&2
+    exit 1
+  fi
+}
+
+require_value() {
+  local label="$1" value="$2"
+  if [[ -z "${value}" ]]; then
+    printf 'Error: required SIP value is missing: %s\n' "${label}" >&2
+    printf '       Set it in .env (see .env.example).\n' >&2
+    exit 1
+  fi
+}
+
+validate_integer() {
+  local label="$1" value="$2"
+  if [[ ! "${value}" =~ ^[0-9]+$ ]]; then
+    printf 'Error: %s must be a non-negative integer.\n' "${label}" >&2
+    exit 1
+  fi
+}
+
+resolve_audio_file() {
+  local audio_file="$1"
+  if [[ ! -f "${audio_file}" ]]; then
+    printf 'Error: audio file not found: %s\n' "${audio_file}" >&2
+    printf '       Set GOFAX_AUDIO_FILE in .env to a valid WAV path.\n' >&2
+    exit 1
+  fi
+  realpath "${audio_file}"
+}
+
+guard_modes() {
+  # Only Tape Mode is implemented in v0.1. Script and Brain modes are
+  # reserved contracts (see docs/MODES.md) and intentionally not wired up.
+  if [[ "${GOFAX_MODE}" != "tape" ]]; then
+    printf 'Error: GOFAX_MODE="%s" is reserved and not implemented in v0.1.\n' "${GOFAX_MODE}" >&2
+    printf '       Only "tape" runs today. See docs/MODES.md.\n' >&2
+    exit 1
+  fi
+
+  if [[ "${GOFAX_LLM_ENABLED:-false}" =~ ^(1|true|yes)$ ]] \
+     || [[ "${GOFAX_TTS_ENABLED:-false}" =~ ^(1|true|yes)$ ]]; then
+    printf 'Error: Brain Mode (LLM/TTS) is reserved and disabled in v0.1.\n' >&2
+    printf '       Keep GOFAX_LLM_ENABLED and GOFAX_TTS_ENABLED set to false.\n' >&2
+    printf '       See docs/MODES.md.\n' >&2
+    exit 1
+  fi
+}
+
+build_image_if_needed() {
+  if docker image inspect "${DOCKER_IMAGE}" >/dev/null 2>&1; then
+    return
+  fi
+  printf '==> Building %s (first run only)...\n' "${DOCKER_IMAGE}" >&2
+  docker build -t "${DOCKER_IMAGE}" .
+}
+
+run_call_loop() {
+  local audio_file_path="$1"
+  local call_interval_seconds="$2"
+
+  while true; do
+    local docker_args=(
+      run
+      --rm
+      --net=host
+      -e SIP_USERNAME
+      -e SIP_PASSWORD
+      -e SIP_DOMAIN
+      -e SIP_SERVER
+      -e SIP_PORT
+      -e SIP_USER
+      -e SIP_AUTH_USER
+      -e SIP_OUTBOUND_PROXY
+      -e DNS_SERVER
+      -e SIP_TRACE
+      -e AUDIO_FILE_SAMPLE_RATE
+      -e CALL_DURATION_SECONDS
+      -v "${audio_file_path}:${CONTAINER_AUDIO_PATH}:ro"
+      "${DOCKER_IMAGE}"
+    )
+    docker "${docker_args[@]}"
+    sleep "${call_interval_seconds}"
+  done
+}
+
+main() {
+  banner >&2
+  load_env_file
+
+  GOFAX_MODE="${GOFAX_MODE:-${DEFAULT_GOFAX_MODE}}"
+  GOFAX_LANGUAGE="${GOFAX_LANGUAGE:-${DEFAULT_GOFAX_LANGUAGE}}"
+  GOFAX_PERSONA="${GOFAX_PERSONA:-${DEFAULT_GOFAX_PERSONA}}"
+
+  # Audio: prefer GOFAX_AUDIO_FILE, fall back to legacy AUDIO_FILE.
+  local audio_file="${GOFAX_AUDIO_FILE:-${AUDIO_FILE:-${DEFAULT_AUDIO_FILE}}}"
+
+  # SIP credentials: prefer the public contract, fall back to legacy names.
+  SIP_USERNAME="${SIP_USERNAME:-${SIP_USER:-}}"
+  SIP_PORT="${SIP_PORT:-${DEFAULT_SIP_PORT}}"
+  CALL_INTERVAL_SECONDS="${CALL_INTERVAL_SECONDS:-${DEFAULT_CALL_INTERVAL_SECONDS}}"
+  CALL_DURATION_SECONDS="${CALL_DURATION_SECONDS:-${DEFAULT_CALL_DURATION_SECONDS}}"
+  AUDIO_FILE_SAMPLE_RATE="${AUDIO_FILE_SAMPLE_RATE:-${DEFAULT_AUDIO_FILE_SAMPLE_RATE}}"
+
+  require_command "docker"
+  require_command "realpath"
+  guard_modes
+
+  require_value "SIP_USERNAME" "${SIP_USERNAME}"
+  require_value "SIP_PASSWORD" "${SIP_PASSWORD:-}"
+  # SIP_DOMAIN is the public contract; legacy configs supplied it via SIP_SERVER.
+  require_value "SIP_DOMAIN" "${SIP_DOMAIN:-${SIP_SERVER:-}}"
+
+  validate_integer "CALL_INTERVAL_SECONDS" "${CALL_INTERVAL_SECONDS}"
+  validate_integer "CALL_DURATION_SECONDS" "${CALL_DURATION_SECONDS}"
+  validate_integer "AUDIO_FILE_SAMPLE_RATE" "${AUDIO_FILE_SAMPLE_RATE}"
+  validate_integer "SIP_PORT" "${SIP_PORT}"
+
+  local audio_file_path
+  audio_file_path="$(resolve_audio_file "${audio_file}")"
+
+  printf '==> Mode: %s | Language: %s | Persona: %s\n' \
+    "${GOFAX_MODE}" "${GOFAX_LANGUAGE}" "${GOFAX_PERSONA}" >&2
+  printf '==> Audio payload: %s\n' "${audio_file_path}" >&2
+
+  # Export resolved values so the container always sees the new contract.
+  export SIP_USERNAME SIP_PORT AUDIO_FILE_SAMPLE_RATE CALL_DURATION_SECONDS
+
+  build_image_if_needed
+  run_call_loop "${audio_file_path}" "${CALL_INTERVAL_SECONDS}"
+}
+
+main "$@"

@@ -1,0 +1,11 @@
+# === Secrets — NEVER commit ===
+.env
+.env.*
+!.env.example
+
+# === Local audio — Apple `say` / TTS output is NOT redistributable. ===
+# Ship text scripts, not voices. Regenerate audio locally (docs/AUDIO_GENERATION.md).
+*.wav
+
+# === macOS / editor noise ===
+.DS_Store

@@ -1,0 +1,44 @@
+{
+  "name": "GoFaxYourself audio assets",
+  "version": "0.1",
+  "note": "Audio is generated LOCALLY and is NOT shipped in this repo (see .gitignore: audio/**/*.wav). GoFaxYourself ships text scripts, not voices. The MIT LICENSE covers code and text scripts, NOT audio. Any audio you publish must have clear redistribution rights. See docs/AUDIO_GENERATION.md.",
+  "recommended_format": {
+    "container": "wav",
+    "channels": 1,
+    "sample_rate": 8000,
+    "sample_format": "s16",
+    "codec": "pcm_s16le"
+  },
+  "fields": [
+    "language",
+    "persona",
+    "source_script",
+    "provider",
+    "generated_at",
+    "output",
+    "sample_rate",
+    "channels",
+    "sample_format",
+    "redistribution",
+    "notes"
+  ],
+  "local_generation": {
+    "provider": "apple-say",
+    "generated_at": "2026-06-17",
+    "redistribution": "no (personal use only — Apple system voices are not redistributable)",
+    "sample_rate": 8000,
+    "channels": 1,
+    "sample_format": "s16",
+    "voices": {
+      "en": "Samantha",
+      "it": "Alice",
+      "es": "Mónica",
+      "fr": "Thomas",
+      "de": "Anna",
+      "pt": "Joana"
+    },
+    "command": "say -v <voice> --file-format=WAVE --data-format=LEI16@8000 -o audio/<lang>/<persona>.wav -f scripts/<lang>/<persona>.txt",
+    "note": "All 48 packs (8 personas x 6 languages) were synthesized offline with macOS 'say'. They play fine on your own SIP line but must not be committed or published. For redistributable audio, use espeak via tools/generate-audio.sh and verify its license."
+  },
+  "assets": []
+}
