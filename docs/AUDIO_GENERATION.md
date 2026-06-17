@@ -78,18 +78,23 @@ tools/normalize-audio.sh <input-audio> <output.wav>
 
 Forces any input to the SIP-friendly WAV format above.
 
-## The bundled placeholder
+## The one bundled default
 
-`audio/en/confused-grandpa.wav` is a **silent-ish placeholder**: a short
-1000 Hz tone followed by silence, generated locally in pure shell (a WAV header
-plus square-wave and zero PCM samples). It is **not speech**, it is public
-domain, and it exists only so the default config works out of the box.
+This repo ships exactly **one** WAV: `audio/it/anti-call-center.wav`, the
+project owner's own Italian demo. It is whitelisted in `.gitignore`
+(`!audio/it/anti-call-center.wav`) so a clean clone has a working default out of
+the box. Its provenance is recorded in
+[`../audio/manifest.json`](../audio/manifest.json) (project-owned, redistributable).
 
-Replace it with real audio when you are ready:
+Every **other** WAV is gitignored. Generate or provide them locally:
 
 ```bash
-tools/generate-audio.sh en confused-grandpa
+tools/generate-audio.sh it broken-fax     # needs espeak + ffmpeg
+# ...or drop in your own ./audio/<lang>/<persona>.wav
 ```
 
-The previous example recording was removed because its provenance was unclear
-and it could not be treated as cleanly redistributable.
+`./gofax` fails fast if the file named by `GOFAX_AUDIO_FILE` is missing.
+
+To ship **another** redistributable WAV, whitelist that one file in
+`.gitignore` (e.g. `!audio/en/example.wav`) **and** record its provenance and
+redistribution rights in the manifest. Otherwise: ship the script, not the voice.

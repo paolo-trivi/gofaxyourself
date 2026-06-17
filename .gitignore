@@ -7,5 +7,9 @@
 # Ship text scripts, not voices. Regenerate audio locally (docs/AUDIO_GENERATION.md).
 *.wav
 
+# Whitelisted, redistributable default payload (project-owned). This ONE WAV
+# ships so a clean clone has a working default. See audio/manifest.json.
+!audio/it/anti-call-center.wav
+
 # === macOS / editor noise ===
 .DS_Store

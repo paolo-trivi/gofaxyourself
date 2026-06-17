@@ -12,6 +12,7 @@ fail=0
 
 ok()   { printf '  ok   %s\n' "$1"; pass=$((pass + 1)); }
 bad()  { printf '  FAIL %s\n' "$1"; fail=$((fail + 1)); }
+note() { printf '  note %s\n' "$1"; }
 
 check_file() {
   if [[ -f "$1" ]]; then ok "exists: $1"; else bad "missing: $1"; fi
@@ -55,18 +56,22 @@ grep -q 'gofaxyourself:local' gofax && ok "docker image name is gofaxyourself:lo
 grep -q '/audio/payload.wav' docker/baresip-entrypoint.sh && ok "container audio path is /audio/payload.wav" || bad "container audio path not neutralized"
 
 printf '== default audio file ==\n'
-# If .env.example sets a default GOFAX_AUDIO_FILE, that file MUST exist.
+# WAVs are gitignored and provided locally, so a clean clone has NO audio.
+# Normal mode: a missing default audio file is a NOTE, not a failure.
+# Strict mode (GOFAX_SMOKE_REQUIRE_AUDIO=1): a missing default FAILS.
 default_audio="$(grep -E '^GOFAX_AUDIO_FILE=' .env.example | head -1 | cut -d= -f2-)"
-if [[ -n "${default_audio}" ]]; then
-  if [[ -f "${default_audio}" ]]; then
-    ok "default GOFAX_AUDIO_FILE exists: ${default_audio}"
-  else
-    bad "default GOFAX_AUDIO_FILE is set but missing: ${default_audio}"
-  fi
+require_audio="${GOFAX_SMOKE_REQUIRE_AUDIO:-0}"
+if [[ -z "${default_audio}" ]]; then
+  ok "no active default GOFAX_AUDIO_FILE in .env.example"
+elif [[ -f "${default_audio}" ]]; then
+  ok "default GOFAX_AUDIO_FILE exists: ${default_audio}"
+elif [[ "${require_audio}" == "1" ]]; then
+  bad "[strict] default GOFAX_AUDIO_FILE missing: ${default_audio}"
 else
-  ok "no active default GOFAX_AUDIO_FILE (user must provide one)"
+  note "default audio not present (expected on a clean clone): ${default_audio}"
+  note "generate/provide it locally, or enforce with GOFAX_SMOKE_REQUIRE_AUDIO=1"
 fi
-# Note: per-persona WAVs are NOT required — only the default above.
+# Note: per-persona WAVs are NOT required — only the default above (strict mode).
 
 printf '== script packs ==\n'
 check_file "scripts/manifest.json"

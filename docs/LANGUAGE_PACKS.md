@@ -5,7 +5,12 @@ GoFaxYourself is **English-first** and **multilingual by design**.
 ## Policy
 
 - English (`en`) is the reference language and ships first.
-- Every other language is a community-contributable "pack" of WAV files.
+- A language "pack" is a set of **text scripts** under `scripts/<lang>/`.
+- **Text scripts are committed. WAV files are generally NOT** — they are
+  gitignored (`*.wav`) and generated/provided locally. The one exception is a
+  file explicitly whitelisted in `.gitignore` with clear redistribution rights:
+  the bundled default `audio/it/anti-call-center.wav` (project-owned). A clean
+  clone therefore contains all scripts plus that one bundled default.
 - No language is required except the one you actually use.
 
 ## Language codes

@@ -45,15 +45,22 @@ Dockerfile, and some WAV files.
 cp .env.example .env
 nano .env          # set SIP_USERNAME, SIP_PASSWORD, SIP_DOMAIN, SIP_SERVER
 
-./gofax
+./gofax            # works out of the box: plays the bundled Italian default
 ```
 
 That's it. First run builds the local image `gofaxyourself:local` from
 `debian:trixie-slim` and installs `baresip-core`. Stop with `Ctrl+C`.
 
-By default GoFax plays `audio/en/confused-grandpa.wav` to every caller. The
-bundled file is a silent-ish **placeholder** (a short tone + silence), not
-speech — see [Generating audio](#generating-audio) to make real voices.
+GoFax ships with **one** bundled default payload —
+`audio/it/anti-call-center.wav` — so a clean clone works immediately. Every
+**other** WAV is intentionally **ignored by git** (`*.wav`): you generate or
+drop those in locally. `./gofax` **fails fast** if the audio file set in your
+`.env` does not exist. Swap the default for any persona:
+
+```bash
+tools/generate-audio.sh it broken-fax    # needs espeak + ffmpeg (optional)
+# then set GOFAX_AUDIO_FILE=./audio/it/broken-fax.wav in .env
+```
 
 ## Modes
 
@@ -74,13 +81,14 @@ just makes GoFax politely refuse.
 English-first, multilingual by design. Audio lives at:
 
 ```
-scripts/<language>/<persona>.txt   <- the funny lines (ship these)
-audio/<language>/<persona>.wav      <- the optional voice (generate these)
-audio/en/confused-grandpa.wav       <- bundled placeholder (tone + silence)
+scripts/<language>/<persona>.txt   <- the funny lines (committed)
+audio/it/anti-call-center.wav       <- the one bundled default (committed)
+audio/<language>/<persona>.wav      <- other voices you generate (gitignored, local)
 ```
 
 Initial languages: `en` `it` `es` `fr` `de` `pt`. We ship **48 text script
-packs** (8 personas × 6 languages); audio is optional.
+packs** (8 personas × 6 languages) plus one bundled Italian default payload;
+all other audio is generated locally and not shipped.
 Recommended WAV format: **mono, 8000 Hz, 16-bit PCM** (SIP-friendly).
 Add your own — see [docs/LANGUAGE_PACKS.md](docs/LANGUAGE_PACKS.md).
 
@@ -163,8 +171,10 @@ Bug reports and language packs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md
 
 Code, shell scripts, and text script packs are [MIT licensed](LICENSE).
 
-**Audio is not covered by MIT.** The bundled `audio/en/confused-grandpa.wav` is
-a self-generated public-domain placeholder. Any audio you add must carry its
-own provenance and redistribution rights in
+**Audio is not covered by MIT.** Only one WAV ships:
+`audio/it/anti-call-center.wav`, the project owner's own Italian demo
+(project-owned, redistributable as the bundled default). Every other WAV is
+gitignored — you generate or provide it locally, and any audio you publish must
+carry its own provenance and redistribution rights in
 [audio/manifest.json](audio/manifest.json). When in doubt, commit the script,
 not the voice.

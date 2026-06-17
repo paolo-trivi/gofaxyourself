@@ -1,7 +1,7 @@
 {
   "name": "GoFaxYourself audio assets",
   "version": "0.1",
-  "note": "Audio is generated LOCALLY and is NOT shipped in this repo (see .gitignore: audio/**/*.wav). GoFaxYourself ships text scripts, not voices. The MIT LICENSE covers code and text scripts, NOT audio. Any audio you publish must have clear redistribution rights. See docs/AUDIO_GENERATION.md.",
+  "note": "WAV files are gitignored (*.wav) and generated/provided locally — with ONE exception: the project-owned default payload audio/it/anti-call-center.wav is whitelisted in .gitignore and shipped, so a clean clone has a working default. All other WAVs are local-only. The MIT LICENSE covers code and text scripts, NOT audio. See docs/AUDIO_GENERATION.md.",
   "recommended_format": {
     "container": "wav",
     "channels": 1,
@@ -12,20 +12,32 @@
   "fields": [
     "language",
     "persona",
-    "source_script",
-    "provider",
-    "generated_at",
     "output",
     "sample_rate",
     "channels",
     "sample_format",
-    "redistribution",
+    "status",
+    "source",
+    "redistribution_status",
     "notes"
+  ],
+  "assets": [
+    {
+      "language": "it",
+      "persona": "anti-call-center",
+      "output": "audio/it/anti-call-center.wav",
+      "sample_rate": 8000,
+      "channels": 1,
+      "sample_format": "s16",
+      "status": "committed",
+      "source": "project-owner-created",
+      "redistribution_status": "project-owned (shipped as the bundled default payload)",
+      "notes": "Original Italian demo WAV created by the project owner. Whitelisted in .gitignore (!audio/it/anti-call-center.wav) as the ONLY committed WAV, so a clean clone has a working default. Already mono / 8000 Hz / 16-bit PCM."
+    }
   ],
   "local_generation": {
     "provider": "apple-say",
-    "generated_at": "2026-06-17",
-    "redistribution": "no (personal use only — Apple system voices are not redistributable)",
+    "redistribution_status": "no (personal use only — Apple system voices are not redistributable)",
     "sample_rate": 8000,
     "channels": 1,
     "sample_format": "s16",
@@ -38,7 +50,6 @@
       "pt": "Joana"
     },
     "command": "say -v <voice> --file-format=WAVE --data-format=LEI16@8000 -o audio/<lang>/<persona>.wav -f scripts/<lang>/<persona>.txt",
-    "note": "All 48 packs (8 personas x 6 languages) were synthesized offline with macOS 'say'. They play fine on your own SIP line but must not be committed or published. For redistributable audio, use espeak via tools/generate-audio.sh and verify its license."
-  },
-  "assets": []
+    "notes": "Convenience way to generate local persona packs from the committed text scripts. These WAVs are local-only and gitignored (NOT the whitelisted default). For redistributable audio, use espeak via tools/generate-audio.sh and verify its license."
+  }
 }

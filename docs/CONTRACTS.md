@@ -33,8 +33,15 @@ GoFax behavior:
 |--------------------------|------------------------------------|--------------------------------|
 | `GOFAX_MODE`             | `tape`                             | Only `tape` runs in v0.1       |
 | `GOFAX_LANGUAGE`         | `en`                               | Language pack code             |
-| `GOFAX_PERSONA`          | `confused-grandpa`                 | Persona identifier             |
-| `GOFAX_AUDIO_FILE`       | `./audio/en/confused-grandpa.wav`  | Preferred audio path           |
+| `GOFAX_PERSONA`          | `anti-call-center`                 | Persona / payload label        |
+| `GOFAX_AUDIO_FILE`       | `./audio/it/anti-call-center.wav`  | **Source of truth** for Tape Mode |
+
+`GOFAX_AUDIO_FILE` is the single source of truth for which WAV Tape Mode plays.
+`GOFAX_LANGUAGE` and `GOFAX_PERSONA` are descriptive labels only — they do not
+select the file. WAV files are gitignored (`*.wav`) and provided/generated
+locally, with one exception: the bundled default `audio/it/anti-call-center.wav`
+is whitelisted and ships. `./gofax` fails fast if `GOFAX_AUDIO_FILE` does not
+exist.
 
 SIP registration:
 
