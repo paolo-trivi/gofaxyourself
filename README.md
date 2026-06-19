@@ -10,190 +10,110 @@
 
 # GoFaxYourself
 
-**A tiny SIP honeypot that answers spam calls so you don't have to.**
+### Robocallers call you. This picks up. With a confused grandpa. On a loop. Forever.
 
-> No cloud. No dashboard. No mercy.
-> Just baresip, Docker, WAV files, and optional AI-powered nonsense.
+A tiny SIP honeypot in one Docker container. It registers to your phone line,
+**auto-answers spam calls**, and plays them a pre-recorded tape until they give
+up and hang up. You do nothing. They waste their afternoon.
 
-Spammers call your number. GoFax picks up, auto-answers, and plays them a
-pre-recorded tape of a confused grandpa (or a broken fax, or an angry printer).
-You do nothing. They waste their time. That's the whole product.
+No PBX. No database. No web UI. No cloud. No outbound calls. Just `baresip`,
+one container, and a WAV file with infinite patience.
 
-**Pre-recorded by default. LLM-powered only if you enjoy burning tokens for justice.**
+```bash
+cp .env.example .env && docker compose up -d
+```
+
+That's the whole install. The line is now live and answering.
 
 ---
 
-## What it is
+## What a call sounds like (from your logs)
 
-A minimal Docker wrapper around [`baresip`](https://github.com/baresip/baresip).
-It registers to your SIP provider, auto-answers inbound calls, and plays a WAV.
+```text
+$ docker compose logs -f
+gofax  | 39XXXXXXXXXX@sip-provider: {0/UDP/v4} 200 OK () [1 binding]   <- registered
+gofax  | call: answering call on line 1 from sip:spammer@unknown with 200
+gofax  | aufile: loading input file '/audio/payload.wav'
+gofax  | Call established: sip:spammer@unknown
+gofax  | stream: incoming rtp for 'audio' established
+gofax  |   ...confused grandpa.wav plays...   "Pronto? PRONTO? Chi parla?"
+gofax  | Call terminated (duration: 94 secs)                          <- 94s well spent
+```
 
-**No PBX. No database. No web UI. No bullshit.**
+> Want the animated demo here? Record a real call with
+> `asciinema rec demo.cast` while `docker compose logs -f` is running, then drop
+> the GIF/SVG in this spot. A starter cast ships in [`demo.cast`](demo.cast).
 
-- ☎️  Inbound SIP auto-answer only
-- 📼 Pre-recorded WAV files by default (Tape Mode)
-- 🌍 English-first, multilingual by design
-- 🐳 Docker-first, terminal-first, old-skool
-- 🤖 Optional LLM/TTS chaos later — disabled by default, not required
+---
 
-This is **not** an enterprise anti-spam platform. It's a shell script, a
-Dockerfile, and some WAV files.
+## Why it just works and stays up
 
-## Quick start
+One container, supervised by Docker itself:
+
+- `restart: unless-stopped` -> baresip is brought back automatically if it crashes.
+- The Docker service starts at boot -> the line comes back after a host reboot.
+- No terminal to keep open, no background script to babysit.
 
 ```bash
-cp .env.example .env
-nano .env          # set SIP_USERNAME, SIP_PASSWORD, SIP_DOMAIN, SIP_SERVER
-
-./gofax            # works out of the box: plays the bundled Italian default
+docker compose ps          # status + health
+docker compose logs -f     # live call activity
+docker compose restart     # reload after editing .env or the WAV
+docker compose down        # stop (and stay stopped)
 ```
 
-That's it. First run builds the local image `gofaxyourself:local` from
-`debian:trixie-slim` and installs `baresip-core`. Stop with `Ctrl+C`.
+**One rule:** run exactly one registrant per phone account. Don't start a second
+copy against the same line, or two clients fight over the registration and it
+stops answering.
 
-GoFax ships with **one** bundled default payload —
-`audio/it/anti-call-center.wav` — so a clean clone works immediately. Every
-**other** WAV is intentionally **ignored by git** (`*.wav`): you generate or
-drop those in locally. `./gofax` **fails fast** if the audio file set in your
-`.env` does not exist. Swap the default for any persona:
+---
+
+## The persona pack
+
+Pick who answers your spammers. Scripts live in [`personas/`](personas/) —
+ready-to-read, meme-grade, safe (no real targets, no threats, just absurdity).
+
+| Persona | Energy |
+|---|---|
+| [confused-grandpa](personas/confused-grandpa.txt) | "Pronto? Is this about the warranty? My grandson handles the warranty." |
+| [broken-fax](personas/broken-fax.txt) | Eternal handshake. Please resend page 1 of 1. BEEEEEEP. |
+| [angry-printer](personas/angry-printer.txt) | PC LOAD LETTER. There is no tray 4. There has never been a tray 4. |
+| [compliance-loop](personas/compliance-loop.txt) | To verify your identity, please first verify your identity. |
+
+The bundled default (`audio/it/anti-call-center.wav`) works out of the box.
+To make a persona talk, turn its script into a WAV and point `.env` at it:
 
 ```bash
-tools/generate-audio.sh it broken-fax    # needs espeak + ffmpeg (optional)
-# then set GOFAX_AUDIO_FILE=./audio/it/broken-fax.wav in .env
+# any text -> SIP-ready WAV (needs espeak + ffmpeg)
+espeak -v en -s 150 -f personas/confused-grandpa.txt --stdout \
+  | ffmpeg -i - -ar 8000 -ac 1 -acodec pcm_s16le audio/en/confused-grandpa.wav
+
+# then in .env:
+#   GOFAX_AUDIO_FILE=./audio/en/confused-grandpa.wav
+docker compose restart
 ```
 
-## Run in the background
+Robotic TTS voice? Even better. That's the whole bit.
 
-`./gofax` runs in the foreground (stop with `Ctrl+C`). To run it detached as a
-small service, use the companion scripts:
-
-```bash
-./gofax-start      # launches ./gofax in the background, writes .gofax.pid
-tail -f gofax.out  # follow the output
-./gofax-stop       # stops the loop, then any in-flight call container
-```
-
-`gofax-start` refuses to launch a second instance and fails fast if the config
-is broken. `gofax-stop` stops the runner loop first (so it can't relaunch) and
-then any in-flight `gofaxyourself:local` container — it also catches a loop you
-started directly with `./gofax`. Both `.gofax.pid` and `gofax.out` are
-gitignored runtime artifacts. All flags pass through: `./gofax-start` accepts
-the same arguments as `./gofax`.
-
-## Modes
-
-| Mode     | What                                        | Status               |
-|----------|---------------------------------------------|----------------------|
-| `tape`   | Play pre-recorded WAV files                  | ✅ default            |
-| `script` | Local randomized snippets                    | 🔒 reserved          |
-| `brain`  | Optional LLM + TTS chaos                      | 🔒 reserved, disabled |
-
-**Tape Mode** is the whole point: offline, no API keys, just WAV files.
-**Script Mode** and **Brain Mode** are documented contracts only — see
-[docs/MODES.md](docs/MODES.md). Brain Mode (LLM/TTS) is **disabled by default**
-and not wired to any provider in v0.1. Setting `GOFAX_LLM_ENABLED=true` today
-just makes GoFax politely refuse.
-
-## Language packs
-
-English-first, multilingual by design. Audio lives at:
-
-```
-scripts/<language>/<persona>.txt   <- the funny lines (committed)
-audio/it/anti-call-center.wav       <- the one bundled default (committed)
-audio/<language>/<persona>.wav      <- other voices you generate (gitignored, local)
-```
-
-Initial languages: `en` `it` `es` `fr` `de` `pt`. We ship **48 text script
-packs** (8 personas × 6 languages) plus one bundled Italian default payload;
-all other audio is generated locally and not shipped.
-Recommended WAV format: **mono, 8000 Hz, 16-bit PCM** (SIP-friendly).
-Add your own — see [docs/LANGUAGE_PACKS.md](docs/LANGUAGE_PACKS.md).
-
-## Generating audio
-
-GoFaxYourself **ships text scripts, not voices.** Audio generation is
-**optional** and happens on your machine — the runtime stays tiny and never
-calls a TTS service.
-
-```bash
-# Optional, developer-side. Needs espeak + ffmpeg (NOT needed to run ./gofax).
-tools/generate-audio.sh en confused-grandpa
-```
-
-This reads `scripts/en/confused-grandpa.txt`, synthesizes offline speech with
-espeak, and writes a SIP-friendly `audio/en/confused-grandpa.wav` (mono,
-8000 Hz, 16-bit PCM). `espeak`/`ffmpeg` are never installed by the Dockerfile
-and are not dependencies of `./gofax`.
-
-Generated audio needs **provenance**: every WAV is recorded in
-[`audio/manifest.json`](audio/manifest.json) with its source and redistribution
-status. Many TTS voices forbid redistribution, so **when in doubt, commit the
-script, not the voice.** Details: [docs/AUDIO_GENERATION.md](docs/AUDIO_GENERATION.md).
-
-## Personas
-
-English-only ids: `confused-grandpa`, `tired-sysadmin`, `broken-fax`,
-`bureaucratic-loop`, `reverse-support`, `compliance-bot`,
-`hold-music-from-hell`, `angry-printer`.
+---
 
 ## Configuration
 
-All config lives in `.env` (copied from `.env.example`). The essentials:
+Everything lives in `.env` (gitignored — it holds your SIP password):
 
-```bash
-GOFAX_MODE=tape
-GOFAX_AUDIO_FILE=./audio/en/confused-grandpa.wav
+| Key | What |
+|---|---|
+| `SIP_USERNAME` / `SIP_PASSWORD` | your SIP account |
+| `SIP_DOMAIN` | the `@domain` of your SIP address (e.g. `windtre.it`) |
+| `SIP_SERVER` | registrar / proxy host (often the same) |
+| `GOFAX_AUDIO_FILE` | the WAV played to callers (mono, 8000 Hz, 16-bit PCM) |
+| `DNS_SERVER` | optional; empty = system DNS |
+| `GOFAX_LOG_ENABLED` | optional CDR/SIP logs to `./logs` (real numbers — gitignored) |
 
-SIP_USERNAME=your-account
-SIP_PASSWORD=your-secret
-SIP_DOMAIN=sip.example.net
-SIP_SERVER=sip.example.net
-SIP_PORT=5060
-```
+---
 
-Full reference: [docs/CONTRACTS.md](docs/CONTRACTS.md).
+## Boring but important
 
-> Legacy variable names (`SIP_USER`, `SIP_OUTBOUND_PROXY`, `AUDIO_FILE`, …)
-> still work as a fallback, but the names above are the supported contract.
-
-## Docs
-
-- [docs/CONTRACTS.md](docs/CONTRACTS.md) — stable env vars, modes, paths, non-goals
-- [docs/MODES.md](docs/MODES.md) — Tape / Script / Brain
-- [docs/LANGUAGE_PACKS.md](docs/LANGUAGE_PACKS.md) — how to add a language
-- [docs/AUDIO_GENERATION.md](docs/AUDIO_GENERATION.md) — optional TTS + audio provenance
-- [docs/LOGGING.md](docs/LOGGING.md) — optional NDJSON call logging (off by default)
-- [docs/SAFETY.md](docs/SAFETY.md) — inbound-only, no outbound, your responsibilities
-- [CONTRIBUTING.md](CONTRIBUTING.md) — add language packs and persona scripts
-- [SECURITY.md](SECURITY.md) — never commit secrets; responsible disclosure
-
-## Safety
-
-GoFax **only answers inbound calls**. It never places outbound calls, never
-autodials, and is not for harassment. The default purpose is defensive
-spam-call handling. You are responsible for complying with local laws and your
-telecom provider's terms. Read [docs/SAFETY.md](docs/SAFETY.md).
-
-## Requirements
-
-- Docker
-- A SIP account that accepts inbound calls
-- A sense of humor
-
-## Maintainer
-
-Built and maintained by [@paolo-trivi](https://github.com/paolo-trivi).
-Bug reports and language packs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## License
-
-Code, shell scripts, and text script packs are [MIT licensed](LICENSE).
-
-**Audio is not covered by MIT.** Only one WAV ships:
-`audio/it/anti-call-center.wav`, the project owner's own Italian demo
-(project-owned, redistributable as the bundled default). Every other WAV is
-gitignored — you generate or provide it locally, and any audio you publish must
-carry its own provenance and redistribution rights in
-[audio/manifest.json](audio/manifest.json). When in doubt, commit the script,
-not the voice.
+GoFaxYourself is **inbound-only and defensive**. It answers calls placed *to
+you*. It does not place calls, autodial, enumerate numbers, or automate
+harassment, and it never will. The joke is wasting a robocaller's time, not
+hurting anyone. Keep it that way. See [LICENSE](LICENSE).

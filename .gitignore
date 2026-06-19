@@ -3,22 +3,13 @@
 .env.*
 !.env.example
 
-# === Local audio — Apple `say` / TTS output is NOT redistributable. ===
-# Ship text scripts, not voices. Regenerate audio locally (docs/AUDIO_GENERATION.md).
+# === Local audio — only the bundled default ships. Drop your own WAVs in. ===
 *.wav
-
-# Whitelisted, redistributable default payload (project-owned). This ONE WAV
-# ships so a clean clone has a working default. See audio/manifest.json.
 !audio/it/anti-call-center.wav
 
 # === Captured call logs — hold real numbers/identities. NEVER commit. ===
-# Generated locally by GOFAX_LOG_ENABLED=true (see docs/LOGGING.md).
 logs/
 *.ndjson
-
-# === Runtime state from ./gofax-start ===
-.gofax.pid
-gofax.out
 
 # === macOS / editor noise ===
 .DS_Store

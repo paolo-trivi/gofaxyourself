@@ -1,0 +1,15 @@
+Fax handshake initiated. Please hold for the carrier tone.
+Beep. Beeeep. Beeeeeeeeep.
+Negotiating connection speed. Falling back. Falling back again.
+Remote device detected. Remote device lost. Remote device detected.
+Please resend page one of one.
+Receiving page one. Receiving page one. Line noise on page one.
+Toner level nominal. Drum level nominal. Patience level critical.
+Handshake failed at fourteen thousand four hundred baud. Retrying.
+Please do not speak during the carrier tone. Beeeeeeep.
+Cover page received. Body missing. Resending cover page.
+Memory full. Storing your call as a half-finished document.
+Reconnecting. Reconnecting. Almost. Reconnecting.
+This is a fax line. Were you expecting a human? Beep.
+Transmission complete. Transmission incomplete. Transmission complete.
+Please reinsert the original document and try your call again.

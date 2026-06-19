@@ -1,0 +1,43 @@
+# GoFaxYourself — always-on SIP honeypot. One baresip container, kept alive by
+# Docker's own restart policy. Survives baresip crashes and host reboots (the
+# docker service is enabled at boot). No bash supervisor, no terminal to keep open.
+#
+#   docker compose up -d        # start once, stays up forever
+#   docker compose ps           # status + health
+#   docker compose logs -f      # follow live SIP/registration output
+#   docker compose restart      # reload after editing .env or the WAV
+#   docker compose down         # stop for good (will NOT auto-restart)
+#
+# Config is read from .env.
+#
+# IMPORTANT — run EXACTLY ONE registrant per SIP account. Don't start a second
+# copy against the same account: two user-agents fight over a single SIP binding
+# and the line stops answering reliably.
+
+services:
+  gofax:
+    build: .
+    image: gofaxyourself:local
+    container_name: gofax
+    # SIP + RTP need the host network stack (matches the ./gofax contract).
+    network_mode: host
+    # The core "always running" guarantee: Docker restarts baresip on crash and
+    # brings the container back after a host reboot. Only an explicit
+    # `docker compose down` / `stop` keeps it down.
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      # Audio payload played to callers. Source of truth is GOFAX_AUDIO_FILE in
+      # .env; falls back to the bundled default so a clean clone still starts.
+      - ${GOFAX_AUDIO_FILE:-./audio/it/anti-call-center.wav}:/audio/payload.wav:ro
+      # CDR / raw SIP logs (GOFAX_LOG_ENABLED in .env). Gitignored on the host.
+      - ./logs:/logs
+    # Liveness: baresip must be PID 1 and alive. If it ever dies the container
+    # exits and the restart policy above brings it straight back.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -qx baresip /proc/1/comm || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    stop_grace_period: 10s
