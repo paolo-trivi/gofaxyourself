@@ -25,7 +25,7 @@ cp .env.example .env && docker compose up -d
 
 That's the whole install. The line is now live and answering.
 
-![GoFaxYourself answering a spam call so you don't have to](demo.gif)
+<img alt="GoFaxYourself answering a spam call so you don't have to" src="https://github.com/user-attachments/assets/e74cc728-419c-449a-b548-11a3ce393eb8" />
 
 ---
 
