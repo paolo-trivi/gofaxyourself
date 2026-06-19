@@ -45,6 +45,10 @@ gofax  | Call terminated (duration: 94 secs)                          <- 94s wel
 > The clip above is [`demo.cast`](demo.cast) rendered to a GIF — replay it
 > yourself with `asciinema play demo.cast`.
 
+**Want to actually hear it?** [Play the bundled tape](audio/it/anti-call-center.wav)
+— click it and GitHub opens a built-in audio player. It's the real
+`anti-call-center.wav` every fresh clone ships with.
+
 ---
 
 ## Why it just works and stays up
