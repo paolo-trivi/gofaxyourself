@@ -25,6 +25,8 @@ cp .env.example .env && docker compose up -d
 
 That's the whole install. The line is now live and answering.
 
+![GoFaxYourself answering a spam call so you don't have to](demo.gif)
+
 ---
 
 ## What a call sounds like (from your logs)
@@ -40,9 +42,8 @@ gofax  |   ...confused grandpa.wav plays...   "Pronto? PRONTO? Chi parla?"
 gofax  | Call terminated (duration: 94 secs)                          <- 94s well spent
 ```
 
-> Want the animated demo here? Record a real call with
-> `asciinema rec demo.cast` while `docker compose logs -f` is running, then drop
-> the GIF/SVG in this spot. A starter cast ships in [`demo.cast`](demo.cast).
+> The clip above is [`demo.cast`](demo.cast) rendered to a GIF — replay it
+> yourself with `asciinema play demo.cast`.
 
 ---
 
