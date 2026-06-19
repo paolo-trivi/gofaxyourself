@@ -16,5 +16,9 @@
 logs/
 *.ndjson
 
+# === Runtime state from ./gofax-start ===
+.gofax.pid
+gofax.out
+
 # === macOS / editor noise ===
 .DS_Store

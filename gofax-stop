@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+#
+# gofax-stop — stop GoFaxYourself cleanly.
+# Stops the runner loop first (so it can't relaunch), then stops any in-flight
+# baresip container spawned from the gofaxyourself:local image.
+#
+# Works whether GoFax was started via ./gofax-start (tracked by .gofax.pid) or
+# launched directly with ./gofax (found by command line as a fallback).
+#
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+readonly PID_FILE=".gofax.pid"
+readonly DOCKER_IMAGE="gofaxyourself:local"
+readonly STOP_TIMEOUT_SECONDS="10"
+
+# Matches the runner invoked as `gofax` / `./gofax` / `/path/gofax` at a path or
+# word boundary, but never `gofax-start` / `gofax-stop` (the `-` breaks ( |$)).
+readonly RUNNER_PATTERN='(^|[ /])gofax( |$)'
+
+stop_runner_loop() {
+  local pids=()
+
+  # Precise PID recorded by ./gofax-start, if present.
+  if [[ -f "${PID_FILE}" ]]; then
+    local pid
+    pid="$(cat "${PID_FILE}" 2>/dev/null || true)"
+    [[ -n "${pid}" ]] && pids+=("${pid}")
+    rm -f "${PID_FILE}"
+  fi
+
+  # Fallback: catch a loop started directly with ./gofax (no pidfile).
+  if command -v pgrep >/dev/null 2>&1; then
+    local matched
+    matched="$(pgrep -f "${RUNNER_PATTERN}" 2>/dev/null || true)"
+    if [[ -n "${matched}" ]]; then
+      local p
+      while read -r p; do [[ -n "${p}" ]] && pids+=("${p}"); done <<<"${matched}"
+    fi
+  fi
+
+  [[ ${#pids[@]} -gt 0 ]] || return 0
+
+  local p
+  for p in $(printf '%s\n' "${pids[@]}" | sort -un); do
+    # Never signal this script or its parent shell.
+    [[ "${p}" == "$$" || "${p}" == "${PPID}" ]] && continue
+    kill -0 "${p}" 2>/dev/null || continue
+    printf '==> Stopping runner (PID %s)...\n' "${p}" >&2
+    kill "${p}" 2>/dev/null || true
+    stopped_something=true
+  done
+}
+
+stop_containers() {
+  command -v docker >/dev/null 2>&1 || return 0
+
+  local ids
+  ids="$(docker ps --quiet --filter "ancestor=${DOCKER_IMAGE}" 2>/dev/null || true)"
+  [[ -n "${ids}" ]] || return 0
+
+  printf '==> Stopping in-flight container(s)...\n' >&2
+  # shellcheck disable=SC2086
+  docker stop -t "${STOP_TIMEOUT_SECONDS}" ${ids} >/dev/null 2>&1 || true
+  stopped_something=true
+}
+
+main() {
+  stopped_something=false
+
+  # Order matters: signal the loop before stopping the container, so when the
+  # container exits the loop wakes up already terminating instead of relaunching.
+  stop_runner_loop
+  stop_containers
+
+  if [[ "${stopped_something}" == true ]]; then
+    printf '==> GoFaxYourself stopped.\n' >&2
+  else
+    printf '==> GoFaxYourself is not running.\n' >&2
+  fi
+}
+
+main "$@"

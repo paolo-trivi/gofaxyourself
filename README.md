@@ -62,6 +62,24 @@ tools/generate-audio.sh it broken-fax    # needs espeak + ffmpeg (optional)
 # then set GOFAX_AUDIO_FILE=./audio/it/broken-fax.wav in .env
 ```
 
+## Run in the background
+
+`./gofax` runs in the foreground (stop with `Ctrl+C`). To run it detached as a
+small service, use the companion scripts:
+
+```bash
+./gofax-start      # launches ./gofax in the background, writes .gofax.pid
+tail -f gofax.out  # follow the output
+./gofax-stop       # stops the loop, then any in-flight call container
+```
+
+`gofax-start` refuses to launch a second instance and fails fast if the config
+is broken. `gofax-stop` stops the runner loop first (so it can't relaunch) and
+then any in-flight `gofaxyourself:local` container — it also catches a loop you
+started directly with `./gofax`. Both `.gofax.pid` and `gofax.out` are
+gitignored runtime artifacts. All flags pass through: `./gofax-start` accepts
+the same arguments as `./gofax`.
+
 ## Modes
 
 | Mode     | What                                        | Status               |

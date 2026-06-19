@@ -20,6 +20,8 @@ check_file() {
 
 printf '== files ==\n'
 check_file "gofax"
+check_file "gofax-start"
+check_file "gofax-stop"
 check_file "Dockerfile"
 check_file "docker/baresip-entrypoint.sh"
 check_file ".env.example"
@@ -39,7 +41,7 @@ check_file "tools/normalize-audio.sh"
 check_file "docker/sip-cdr-logger.sh"
 
 printf '== executables ==\n'
-for exe in gofax tools/generate-audio.sh tools/normalize-audio.sh docker/sip-cdr-logger.sh; do
+for exe in gofax gofax-start gofax-stop tools/generate-audio.sh tools/normalize-audio.sh docker/sip-cdr-logger.sh; do
   if [[ -x "${exe}" ]]; then ok "${exe} is executable"; else bad "${exe} is not executable"; fi
 done
 
@@ -102,8 +104,11 @@ done
 
 printf '== no stale project names (outside compat notes) ==\n'
 # Old project identifiers must not leak into public files.
+# Scope: committed/public files only. Skip gitignored runtime dirs (logs/ holds
+# real numbers by design — see docs/LOGGING.md) and the git internals.
 stale="$(grep -rniE 'windtre|segreteria|ferie\.wav|segreteria-baresip' \
-  --exclude='.env' --exclude='smoke-test.sh' . 2>/dev/null || true)"
+  --exclude='.env' --exclude='smoke-test.sh' \
+  --exclude-dir='logs' --exclude-dir='.git' . 2>/dev/null || true)"
 if [[ -z "${stale}" ]]; then
   ok "no stale references found"
 else

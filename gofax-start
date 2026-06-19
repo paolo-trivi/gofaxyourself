@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# gofax-start — start GoFaxYourself in the background.
+# Launches ./gofax detached, records its PID in .gofax.pid, and streams its
+# output to gofax.out. Refuses to start a second instance. Stop with ./gofax-stop.
+#
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+readonly PID_FILE=".gofax.pid"
+readonly LOG_FILE="gofax.out"
+
+# Matches the runner invoked as `gofax` / `./gofax` / `/path/gofax`, but never
+# `gofax-start` / `gofax-stop` (the `-` breaks ( |$)). Mirrors ./gofax-stop.
+readonly RUNNER_PATTERN='(^|[ /])gofax( |$)'
+
+is_running() {
+  # Tracked instance from a previous ./gofax-start.
+  if [[ -f "${PID_FILE}" ]]; then
+    local pid
+    pid="$(cat "${PID_FILE}" 2>/dev/null || true)"
+    [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null && return 0
+  fi
+  # Untracked instance started directly with ./gofax.
+  if command -v pgrep >/dev/null 2>&1; then
+    pgrep -f "${RUNNER_PATTERN}" >/dev/null 2>&1 && return 0
+  fi
+  return 1
+}
+
+main() {
+  if is_running; then
+    local where=""
+    [[ -f "${PID_FILE}" ]] && where=" (PID $(cat "${PID_FILE}" 2>/dev/null))"
+    printf 'GoFaxYourself is already running%s. Stop it with ./gofax-stop.\n' \
+      "${where}" >&2
+    exit 0
+  fi
+
+  # Drop a stale pidfile from a previous unclean exit.
+  rm -f "${PID_FILE}"
+
+  printf '==> Starting GoFaxYourself in the background...\n' >&2
+  nohup ./gofax "$@" >"${LOG_FILE}" 2>&1 &
+  local pid=$!
+  echo "${pid}" >"${PID_FILE}"
+
+  # Give it a moment so a fast-failing config (missing .env, bad audio) surfaces
+  # here instead of dying silently in the background.
+  sleep 1
+  if ! kill -0 "${pid}" 2>/dev/null; then
+    rm -f "${PID_FILE}"
+    printf 'Error: GoFaxYourself exited immediately. Last output:\n' >&2
+    tail -n 20 "${LOG_FILE}" >&2 || true
+    exit 1
+  fi
+
+  printf '==> Started (PID %s). Output: %s\n' "${pid}" "${LOG_FILE}" >&2
+  printf '    Follow logs: tail -f %s\n' "${LOG_FILE}" >&2
+  printf '    Stop with:   ./gofax-stop\n' >&2
+}
+
+main "$@"
