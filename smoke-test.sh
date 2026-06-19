@@ -28,6 +28,7 @@ check_file "docs/CONTRACTS.md"
 check_file "docs/MODES.md"
 check_file "docs/LANGUAGE_PACKS.md"
 check_file "docs/AUDIO_GENERATION.md"
+check_file "docs/LOGGING.md"
 check_file "docs/SAFETY.md"
 check_file "LICENSE"
 check_file "SECURITY.md"
@@ -35,9 +36,10 @@ check_file "CONTRIBUTING.md"
 check_file "audio/manifest.json"
 check_file "tools/generate-audio.sh"
 check_file "tools/normalize-audio.sh"
+check_file "docker/sip-cdr-logger.sh"
 
 printf '== executables ==\n'
-for exe in gofax tools/generate-audio.sh tools/normalize-audio.sh; do
+for exe in gofax tools/generate-audio.sh tools/normalize-audio.sh docker/sip-cdr-logger.sh; do
   if [[ -x "${exe}" ]]; then ok "${exe} is executable"; else bad "${exe} is not executable"; fi
 done
 
@@ -45,7 +47,8 @@ printf '== .env.example required vars ==\n'
 for var in GOFAX_MODE GOFAX_LANGUAGE GOFAX_PERSONA GOFAX_AUDIO_FILE \
            SIP_USERNAME SIP_PASSWORD SIP_DOMAIN SIP_SERVER SIP_PORT \
            CALL_DURATION_SECONDS CALL_INTERVAL_SECONDS AUDIO_FILE_SAMPLE_RATE \
-           GOFAX_LLM_ENABLED GOFAX_TTS_ENABLED; do
+           GOFAX_LLM_ENABLED GOFAX_TTS_ENABLED \
+           GOFAX_LOG_ENABLED GOFAX_LOG_HASH_PEPPER GOFAX_LOG_REDACT; do
   if grep -q "^${var}=" .env.example; then ok ".env.example has ${var}"; else bad ".env.example missing ${var}"; fi
 done
 
@@ -54,6 +57,8 @@ grep -q "^GOFAX_MODE=tape$" .env.example && ok "default mode is tape" || bad "de
 grep -q "^AUDIO_FILE_SAMPLE_RATE=8000$" .env.example && ok "sample rate default is 8000" || bad "sample rate default is not 8000"
 grep -q 'gofaxyourself:local' gofax && ok "docker image name is gofaxyourself:local" || bad "docker image name not found in gofax"
 grep -q '/audio/payload.wav' docker/baresip-entrypoint.sh && ok "container audio path is /audio/payload.wav" || bad "container audio path not neutralized"
+grep -q '^GOFAX_LOG_ENABLED=false$' .env.example && ok "logging defaults to off" || bad "logging default is not off"
+grep -qE '^logs/$' .gitignore && grep -qE '^\*\.ndjson$' .gitignore && ok "call logs are gitignored" || bad "call logs not gitignored"
 
 printf '== default audio file ==\n'
 # WAVs are gitignored and provided locally, so a clean clone has NO audio.

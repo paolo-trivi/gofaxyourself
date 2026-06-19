@@ -145,6 +145,7 @@ Full reference: [docs/CONTRACTS.md](docs/CONTRACTS.md).
 - [docs/MODES.md](docs/MODES.md) — Tape / Script / Brain
 - [docs/LANGUAGE_PACKS.md](docs/LANGUAGE_PACKS.md) — how to add a language
 - [docs/AUDIO_GENERATION.md](docs/AUDIO_GENERATION.md) — optional TTS + audio provenance
+- [docs/LOGGING.md](docs/LOGGING.md) — optional NDJSON call logging (off by default)
 - [docs/SAFETY.md](docs/SAFETY.md) — inbound-only, no outbound, your responsibilities
 - [CONTRIBUTING.md](CONTRIBUTING.md) — add language packs and persona scripts
 - [SECURITY.md](SECURITY.md) — never commit secrets; responsible disclosure

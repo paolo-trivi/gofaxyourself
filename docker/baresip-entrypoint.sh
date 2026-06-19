@@ -8,6 +8,8 @@ set -euo pipefail
 
 readonly CONFIG_DIR="/tmp/baresip"
 readonly AUDIO_PATH="/audio/payload.wav"
+readonly LOG_DIR="/logs"
+readonly CDR_LOGGER="/usr/local/bin/sip-cdr-logger.sh"
 readonly DEFAULT_SIP_PORT="5060"
 readonly DEFAULT_CALL_DURATION_SECONDS="0"
 readonly DEFAULT_AUDIO_FILE_SAMPLE_RATE="8000"
@@ -124,8 +126,24 @@ main() {
     baresip_args+=(-t "${CALL_DURATION_SECONDS}")
   fi
 
-  if [[ "${SIP_TRACE:-}" == "1" || "${SIP_TRACE:-}" == "true" || "${SIP_TRACE:-}" == "yes" ]]; then
+  local logging_enabled="false"
+  if [[ "${GOFAX_LOG_ENABLED:-}" =~ ^(1|true|yes|on)$ ]]; then
+    logging_enabled="true"
+  fi
+
+  # SIP trace enriches the CDR, so logging implies trace. It can also be
+  # requested on its own via SIP_TRACE (existing contract).
+  if [[ "${logging_enabled}" == "true" \
+        || "${SIP_TRACE:-}" == "1" || "${SIP_TRACE:-}" == "true" || "${SIP_TRACE:-}" == "yes" ]]; then
     baresip_args+=(-s)
+  fi
+
+  if [[ "${logging_enabled}" == "true" ]]; then
+    mkdir -p "${LOG_DIR}"
+    # baresip stays the main process (exec); its output is piped through the
+    # passive CDR logger via process substitution, preserving signal handling.
+    export GOFAX_LOG_TRACE="true"
+    exec baresip "${baresip_args[@]}" > >("${CDR_LOGGER}") 2>&1
   fi
 
   exec baresip "${baresip_args[@]}"

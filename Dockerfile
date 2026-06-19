@@ -7,6 +7,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY docker/baresip-entrypoint.sh /usr/local/bin/baresip-entrypoint.sh
-RUN chmod +x /usr/local/bin/baresip-entrypoint.sh
+COPY docker/sip-cdr-logger.sh /usr/local/bin/sip-cdr-logger.sh
+RUN chmod +x /usr/local/bin/baresip-entrypoint.sh /usr/local/bin/sip-cdr-logger.sh
 
 ENTRYPOINT ["/usr/local/bin/baresip-entrypoint.sh"]

@@ -108,6 +108,20 @@ run_call_loop() {
   local audio_file_path="$1"
   local call_interval_seconds="$2"
 
+  # Optional CDR logging: mount a host logs/ dir and forward the log knobs only
+  # when the feature is on, so a default run creates no logs/ and behaves as before.
+  local logging_args=()
+  if [[ "${GOFAX_LOG_ENABLED:-false}" =~ ^(1|true|yes|on)$ ]]; then
+    mkdir -p "${PWD}/logs"
+    logging_args=(
+      -e GOFAX_LOG_ENABLED
+      -e GOFAX_LOG_HASH_PEPPER
+      -e GOFAX_LOG_REDACT
+      -v "${PWD}/logs:/logs"
+    )
+    printf '==> CDR logging: ON -> %s/logs/ (gitignored, may hold real numbers)\n' "${PWD}" >&2
+  fi
+
   while true; do
     local docker_args=(
       run
@@ -125,6 +139,7 @@ run_call_loop() {
       -e SIP_TRACE
       -e AUDIO_FILE_SAMPLE_RATE
       -e CALL_DURATION_SECONDS
+      ${logging_args[@]+"${logging_args[@]}"}
       -v "${audio_file_path}:${CONTAINER_AUDIO_PATH}:ro"
       "${DOCKER_IMAGE}"
     )

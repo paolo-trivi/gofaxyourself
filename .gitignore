@@ -11,5 +11,10 @@
 # ships so a clean clone has a working default. See audio/manifest.json.
 !audio/it/anti-call-center.wav
 
+# === Captured call logs — hold real numbers/identities. NEVER commit. ===
+# Generated locally by GOFAX_LOG_ENABLED=true (see docs/LOGGING.md).
+logs/
+*.ndjson
+
 # === macOS / editor noise ===
 .DS_Store
